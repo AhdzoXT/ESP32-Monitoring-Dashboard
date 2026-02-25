@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ESP32 Monitoring</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+
+body{
+  font-family: Arial, sans-serif;
+  background:#0f172a;
+  color:white;
+  margin:0;
+  padding:20px;
+}
+
+h1{
+  text-align:center;
+  margin-bottom:30px;
+}
+
+.dashboard{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:20px;
+}
+
+.card{
+  background:#1e293b;
+  padding:20px;
+  border-radius:15px;
+  text-align:center;
+  cursor:pointer;
+  transition: all 0.3s ease;
+}
+
+.card:hover{
+  transform:scale(1.08);
+  background:#334155;
+}
+
+.value{
+  font-size:28px;
+  margin-top:10px;
+}
+
+#chartContainer{
+  margin-top:40px;
+  display:none;
+}
+
+canvas{
+  background:#1e293b;
+  padding:20px;
+  border-radius:15px;
+}
+
+</style>
+</head>
+<body>
+
+<h1>🌿 ESP32 Monitoring Dashboard</h1>
+
+<div class="dashboard">
+  <div class="card" onclick="showChart('temperature')">
+    <h3>🌡 Temperature</h3>
+    <div class="value" id="temperature">--</div>
+  </div>
+
+  <div class="card" onclick="showChart('humidity')">
+    <h3>💧 Humidity</h3>
+    <div class="value" id="humidity">--</div>
+  </div>
+
+  <div class="card" onclick="showChart('airQuality')">
+    <h3>🌫 Air Quality</h3>
+    <div class="value" id="airQuality">--</div>
+  </div>
+
+  <div class="card" style="cursor:default;">
+    <h3>⏱ Last Update</h3>
+    <div class="value" id="lastUpdate">--</div>
+  </div>
+</div>
+
+<div id="chartContainer">
+  <h2 id="chartTitle"></h2>
+  <canvas id="historyChart"></canvas>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+
+  apiKey: "AIzaSyCVuJ2s68xscizT2YRvIqMaeFmAKGhXny0",
+  authDomain: "esp32-iot-monitoring-sistem.firebaseapp.com",
+  databaseURL: "https://esp32-iot-monitoring-sistem-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "esp32-iot-monitoring-sistem",
+  storageBucket: "esp32-iot-monitoring-sistem.firebasestorage.app",
+  messagingSenderId: "740171871840",
+  appId: "1:740171871840:web:1414091cd16c5bec427505"
+  
+};
+
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+const sensorRef = ref(database, "sensor");
+const historyRef = ref(database, "sensorHistory");
+
+let historyData = {};
+let chart;
+
+onValue(sensorRef, (snapshot)=>{
+  const data = snapshot.val();
+  if(!data) return;
+
+  document.getElementById("temperature").innerText = data.temperature + " °C";
+  document.getElementById("humidity").innerText = data.humidity + " %";
+  document.getElementById("airQuality").innerText = data.airQuality;
+
+  const date = new Date(data.timestamp);
+  document.getElementById("lastUpdate").innerText = date.toLocaleString();
+});
+
+onValue(historyRef, (snapshot)=>{
+  historyData = snapshot.val() || {};
+});
+
+window.showChart = function(type){
+
+  const labels = [];
+  const values = [];
+
+  const now = Date.now();
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+  Object.keys(historyData).forEach(key=>{
+    const item = historyData[key];
+    if(now - item.timestamp <= oneWeek){
+      const date = new Date(item.timestamp);
+      labels.push(date.toLocaleString());
+      values.push(item[type]);
+    }
+  });
+
+  document.getElementById("chartContainer").style.display="block";
+  document.getElementById("chartTitle").innerText="History " + type;
+
+  if(chart) chart.destroy();
+
+  const ctx = document.getElementById("historyChart").getContext("2d");
+
+  chart = new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:labels,
+      datasets:[{
+        label:type,
+        data:values,
+        borderWidth:2,
+        tension:0.3
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{display:true}
+      },
+      scales:{
+        x:{display:false}
+      }
+    }
+  });
+}
+
+</script>
+
+</body>
+</html>
