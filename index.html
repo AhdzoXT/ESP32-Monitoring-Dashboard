@@ -18,34 +18,44 @@ body{
 
 h1{
   text-align:center;
-  padding:20px;
+  padding:30px;
   font-weight:500;
 }
 
 .grid{
   display:grid;
-  grid-template-columns: repeat(auto-fit,minmax(350px,1fr));
-  gap:20px;
-  padding:20px;
+  grid-template-columns: repeat(3, 1fr);
+  gap:25px;
+  padding:40px;
+  max-width:1400px;
+  margin:auto;
+}
+
+@media(max-width:1100px){
+  .grid{ grid-template-columns: repeat(2,1fr); }
+}
+@media(max-width:700px){
+  .grid{ grid-template-columns: 1fr; }
 }
 
 .card{
   background:#111827;
-  border-radius:12px;
-  padding:20px;
-  box-shadow:0 0 20px rgba(0,0,0,0.6);
+  border-radius:16px;
+  padding:25px;
+  box-shadow:0 0 30px rgba(0,0,0,0.6);
 }
 
 .card h3{
   font-weight:400;
-  margin-bottom:10px;
   color:#94a3b8;
+  margin-bottom:10px;
 }
 
 .bigValue{
   font-size:48px;
   font-weight:600;
   text-align:center;
+  margin-bottom:10px;
 }
 
 .smallNote{
@@ -56,14 +66,14 @@ h1{
 
 canvas{
   width:100% !important;
-  height:250px !important;
+  height:260px !important;
 }
 </style>
 </head>
 
 <body>
 
-<h1>ESP32 Monitoring Dashboard</h1>
+<h1>ESP32 Industrial Monitoring</h1>
 
 <div class="grid">
 
@@ -118,18 +128,19 @@ var firebaseConfig = {
   storageBucket: "esp32-iot-monitoring-sistem.firebasestorage.app",
   messagingSenderId: "740171871840",
   appId: "1:740171871840:web:1414091cd16c5bec427505"
+
 };
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// ================= GAUGE CHART =================
-function createGauge(id, max){
+// ================= GAUGE =================
+function createGauge(id,max,color){
   return new Chart(document.getElementById(id),{
     type:'doughnut',
     data:{
       datasets:[{
         data:[0,max],
-        backgroundColor:['#22c55e','#1f2937'],
+        backgroundColor:[color,'#1f2937'],
         borderWidth:0
       }]
     },
@@ -143,9 +154,9 @@ function createGauge(id, max){
   });
 }
 
-var tempGauge = createGauge("tempGauge",50);
-var humGauge = createGauge("humGauge",100);
-var airGauge = createGauge("airGauge",2000);
+var tempGauge = createGauge("tempGauge",50,"#22c55e");
+var humGauge = createGauge("humGauge",100,"#3b82f6");
+var airGauge = createGauge("airGauge",2000,"#facc15");
 
 // ================= LINE CHART =================
 function createLine(id,label,color){
@@ -159,14 +170,36 @@ function createLine(id,label,color){
         borderColor:color,
         backgroundColor:color+"22",
         fill:true,
-        tension:0.3
+        tension:0.3,
+        pointRadius:3
       }]
     },
     options:{
-      plugins:{legend:{labels:{color:"white"}}},
+      interaction:{
+        mode:'index',
+        intersect:false
+      },
+      hover:{
+        mode:'index',
+        intersect:false
+      },
+      plugins:{
+        legend:{labels:{color:"white"}},
+        tooltip:{
+          enabled:true,
+          mode:'index',
+          intersect:false
+        }
+      },
       scales:{
-        x:{ticks:{color:"white"}},
-        y:{ticks:{color:"white"}}
+        x:{
+          ticks:{color:"white"},
+          grid:{color:"rgba(255,255,255,0.05)"}
+        },
+        y:{
+          ticks:{color:"white"},
+          grid:{color:"rgba(255,255,255,0.05)"}
+        }
       }
     }
   });
@@ -196,13 +229,16 @@ db.ref("sensor").on("value", snap=>{
 });
 
 // ================= HISTORY =================
-db.ref("sensorHistory").limitToLast(50).on("value", snap=>{
+db.ref("sensorHistory").limitToLast(20).on("value", snap=>{
 
   let labels=[], t=[], h=[], a=[];
 
   snap.forEach(child=>{
     let d = child.val();
-    labels.push(new Date(d.timestamp).toLocaleTimeString());
+    labels.push(new Date(d.timestamp).toLocaleTimeString([],{
+      hour:'2-digit',
+      minute:'2-digit'
+    }));
     t.push(d.temperature);
     h.push(d.humidity);
     a.push(d.airQuality);
