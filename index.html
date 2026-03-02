@@ -2,106 +2,114 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>ESP32 Monitoring</title>
+<title>ESP32 Industrial Monitoring</title>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-<!-- Chart -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- Gauge -->
-<script src="https://cdn.jsdelivr.net/npm/canvas-gauges/gauge.min.js"></script>
 
 <style>
 body{
   margin:0;
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg,#0f172a,#020617);
+  background:#0b1220;
   color:white;
+  font-family:Segoe UI;
 }
 
 h1{
   text-align:center;
   padding:20px;
-  font-weight:600;
-  letter-spacing:1px;
+  font-weight:500;
 }
 
 .grid{
   display:grid;
-  grid-template-columns: repeat(auto-fit,minmax(320px,1fr));
-  gap:25px;
-  padding:25px;
+  grid-template-columns: repeat(auto-fit,minmax(350px,1fr));
+  gap:20px;
+  padding:20px;
 }
 
 .card{
-  background: rgba(30,41,59,0.8);
-  backdrop-filter: blur(10px);
-  border-radius:20px;
+  background:#111827;
+  border-radius:12px;
   padding:20px;
-  box-shadow:0 0 25px rgba(0,255,200,0.1);
-  transition:0.3s;
-}
-
-.card:hover{
-  box-shadow:0 0 40px rgba(0,255,200,0.3);
-  transform:translateY(-5px);
+  box-shadow:0 0 20px rgba(0,0,0,0.6);
 }
 
 .card h3{
-  text-align:center;
+  font-weight:400;
   margin-bottom:10px;
+  color:#94a3b8;
+}
+
+.bigValue{
+  font-size:48px;
+  font-weight:600;
+  text-align:center;
+}
+
+.smallNote{
+  text-align:right;
+  font-size:12px;
+  color:#64748b;
 }
 
 canvas{
   width:100% !important;
-  height:280px !important;
+  height:250px !important;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🌿 ESP32 Pro Monitoring Dashboard</h1>
+<h1>ESP32 Monitoring Dashboard</h1>
 
 <div class="grid">
 
 <div class="card">
+<div class="smallNote">Last 10 minutes</div>
 <h3>Temperature</h3>
+<div class="bigValue" id="tempValue">-- °C</div>
 <canvas id="tempGauge"></canvas>
 </div>
 
 <div class="card">
+<div class="smallNote">Last 10 minutes</div>
 <h3>Humidity</h3>
+<div class="bigValue" id="humValue">-- %</div>
 <canvas id="humGauge"></canvas>
 </div>
 
 <div class="card">
+<div class="smallNote">Last 10 minutes</div>
 <h3>Air Quality</h3>
+<div class="bigValue" id="airValue">--</div>
 <canvas id="airGauge"></canvas>
 </div>
 
 <div class="card">
-<h3>Temperature (Last 50)</h3>
+<div class="smallNote">Last 24 hours</div>
+<h3>Temperature</h3>
 <canvas id="tempChart"></canvas>
 </div>
 
 <div class="card">
-<h3>Humidity (Last 50)</h3>
+<div class="smallNote">Last 24 hours</div>
+<h3>Humidity</h3>
 <canvas id="humChart"></canvas>
 </div>
 
 <div class="card">
-<h3>Air Quality (Last 50)</h3>
+<div class="smallNote">Last 24 hours</div>
+<h3>Air Quality</h3>
 <canvas id="airChart"></canvas>
 </div>
 
 </div>
 
 <script>
-// ================= FIREBASE CONFIG =================
+// ================= FIREBASE =================
 var firebaseConfig = {
   apiKey: "AIzaSyCVuJ2s68xscizT2YRvIqMaeFmAKGhXny0",
   authDomain: "esp32-iot-monitoring-sistem.firebaseapp.com",
@@ -110,41 +118,37 @@ var firebaseConfig = {
   storageBucket: "esp32-iot-monitoring-sistem.firebasestorage.app",
   messagingSenderId: "740171871840",
   appId: "1:740171871840:web:1414091cd16c5bec427505"
-
 };
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// ================= GAUGES =================
-function createGauge(id, unit, min, max){
-  return new RadialGauge({
-    renderTo: id,
-    width: 280,
-    height: 280,
-    units: unit,
-    minValue: min,
-    maxValue: max,
-    value: 0,
-    animation: true,
-    animationDuration: 800,
-    colorPlate:"#0f172a",
-    colorMajorTicks:"#94a3b8",
-    colorNumbers:"#ffffff",
-    colorNeedle:"#22d3ee",
-    colorNeedleEnd:"#22d3ee",
-    colorValueBoxBackground:"#0f172a",
-    highlights:[
-      {from:max*0.7,to:max,color:"rgba(255,0,0,.3)"}
-    ]
-  }).draw();
+// ================= GAUGE CHART =================
+function createGauge(id, max){
+  return new Chart(document.getElementById(id),{
+    type:'doughnut',
+    data:{
+      datasets:[{
+        data:[0,max],
+        backgroundColor:['#22c55e','#1f2937'],
+        borderWidth:0
+      }]
+    },
+    options:{
+      circumference:180,
+      rotation:270,
+      cutout:'70%',
+      plugins:{legend:{display:false}},
+      responsive:true
+    }
+  });
 }
 
-var tempGauge = createGauge("tempGauge","°C",0,50);
-var humGauge = createGauge("humGauge","%",0,100);
-var airGauge = createGauge("airGauge","AQ",0,2000);
+var tempGauge = createGauge("tempGauge",50);
+var humGauge = createGauge("humGauge",100);
+var airGauge = createGauge("airGauge",2000);
 
-// ================= CHART =================
-function createChart(id,label,color){
+// ================= LINE CHART =================
+function createLine(id,label,color){
   return new Chart(document.getElementById(id),{
     type:'line',
     data:{
@@ -153,18 +157,13 @@ function createChart(id,label,color){
         label:label,
         data:[],
         borderColor:color,
-        borderWidth:2,
+        backgroundColor:color+"22",
         fill:true,
-        backgroundColor:color+"33",
-        tension:0.4
+        tension:0.3
       }]
     },
     options:{
-      responsive:true,
-      animation:true,
-      plugins:{
-        legend:{labels:{color:"white"}}
-      },
+      plugins:{legend:{labels:{color:"white"}}},
       scales:{
         x:{ticks:{color:"white"}},
         y:{ticks:{color:"white"}}
@@ -173,18 +172,27 @@ function createChart(id,label,color){
   });
 }
 
-var tempChart = createChart("tempChart","Temperature","#22d3ee");
-var humChart = createChart("humChart","Humidity","#4ade80");
-var airChart = createChart("airChart","Air Quality","#facc15");
+var tempChart = createLine("tempChart","Temperature","#22c55e");
+var humChart = createLine("humChart","Humidity","#3b82f6");
+var airChart = createLine("airChart","Air Quality","#facc15");
 
 // ================= REALTIME CURRENT =================
 db.ref("sensor").on("value", snap=>{
   var d = snap.val();
   if(!d) return;
 
-  tempGauge.value = d.temperature;
-  humGauge.value = d.humidity;
-  airGauge.value = d.airQuality;
+  document.getElementById("tempValue").innerText = d.temperature+" °C";
+  document.getElementById("humValue").innerText = d.humidity+" %";
+  document.getElementById("airValue").innerText = d.airQuality;
+
+  tempGauge.data.datasets[0].data=[d.temperature,50-d.temperature];
+  tempGauge.update();
+
+  humGauge.data.datasets[0].data=[d.humidity,100-d.humidity];
+  humGauge.update();
+
+  airGauge.data.datasets[0].data=[d.airQuality,2000-d.airQuality];
+  airGauge.update();
 });
 
 // ================= HISTORY =================
