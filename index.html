@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>ESP32 Industrial Monitoring</title>
+<title>ESP32 Industrial Monitoring PRO</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -18,25 +18,20 @@ body{
 
 h1{
   text-align:center;
-  padding:30px;
-  font-weight:500;
+  padding:25px;
 }
 
 .grid{
   display:grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3,1fr);
   gap:25px;
   padding:40px;
   max-width:1400px;
   margin:auto;
 }
 
-@media(max-width:1100px){
-  .grid{ grid-template-columns: repeat(2,1fr); }
-}
-@media(max-width:700px){
-  .grid{ grid-template-columns: 1fr; }
-}
+@media(max-width:1100px){ .grid{grid-template-columns:repeat(2,1fr);} }
+@media(max-width:700px){ .grid{grid-template-columns:1fr;} }
 
 .card{
   background:#111827;
@@ -45,23 +40,29 @@ h1{
   box-shadow:0 0 30px rgba(0,0,0,0.6);
 }
 
-.card h3{
-  font-weight:400;
-  color:#94a3b8;
-  margin-bottom:10px;
-}
-
 .bigValue{
   font-size:48px;
-  font-weight:600;
   text-align:center;
   margin-bottom:10px;
 }
 
-.smallNote{
-  text-align:right;
-  font-size:12px;
-  color:#64748b;
+.rangeButtons{
+  text-align:center;
+  margin-bottom:20px;
+}
+
+.rangeButtons button{
+  background:#1f2937;
+  color:white;
+  border:none;
+  padding:8px 15px;
+  margin:5px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.rangeButtons button.active{
+  background:#22c55e;
 }
 
 canvas{
@@ -75,44 +76,31 @@ canvas{
 
 <h1>ESP32 Industrial Monitoring</h1>
 
+<div class="rangeButtons">
+<button onclick="setRange('now')" class="active">Now</button>
+<button onclick="setRange('1h')">1 Hour</button>
+<button onclick="setRange('6h')">6 Hour</button>
+<button onclick="setRange('1d')">1 Day</button>
+<button onclick="setRange('1w')">1 Week</button>
+</div>
+
 <div class="grid">
 
 <div class="card">
-<div class="smallNote">Last 10 minutes</div>
 <h3>Temperature</h3>
 <div class="bigValue" id="tempValue">-- °C</div>
-<canvas id="tempGauge"></canvas>
-</div>
-
-<div class="card">
-<div class="smallNote">Last 10 minutes</div>
-<h3>Humidity</h3>
-<div class="bigValue" id="humValue">-- %</div>
-<canvas id="humGauge"></canvas>
-</div>
-
-<div class="card">
-<div class="smallNote">Last 10 minutes</div>
-<h3>Air Quality</h3>
-<div class="bigValue" id="airValue">--</div>
-<canvas id="airGauge"></canvas>
-</div>
-
-<div class="card">
-<div class="smallNote">Last 24 hours</div>
-<h3>Temperature</h3>
 <canvas id="tempChart"></canvas>
 </div>
 
 <div class="card">
-<div class="smallNote">Last 24 hours</div>
 <h3>Humidity</h3>
+<div class="bigValue" id="humValue">-- %</div>
 <canvas id="humChart"></canvas>
 </div>
 
 <div class="card">
-<div class="smallNote">Last 24 hours</div>
 <h3>Air Quality</h3>
+<div class="bigValue" id="airValue">--</div>
 <canvas id="airChart"></canvas>
 </div>
 
@@ -133,33 +121,10 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// ================= GAUGE =================
-function createGauge(id,max,color){
-  return new Chart(document.getElementById(id),{
-    type:'doughnut',
-    data:{
-      datasets:[{
-        data:[0,max],
-        backgroundColor:[color,'#1f2937'],
-        borderWidth:0
-      }]
-    },
-    options:{
-      circumference:180,
-      rotation:270,
-      cutout:'70%',
-      plugins:{legend:{display:false}},
-      responsive:true
-    }
-  });
-}
+let currentRange = "now";
 
-var tempGauge = createGauge("tempGauge",50,"#22c55e");
-var humGauge = createGauge("humGauge",100,"#3b82f6");
-var airGauge = createGauge("airGauge",2000,"#facc15");
-
-// ================= LINE CHART =================
-function createLine(id,label,color){
+// ================= CHART FUNCTION =================
+function createChart(id,label,color){
   return new Chart(document.getElementById(id),{
     type:'line',
     data:{
@@ -170,92 +135,132 @@ function createLine(id,label,color){
         borderColor:color,
         backgroundColor:color+"22",
         fill:true,
-        tension:0.3,
-        pointRadius:3
+        tension:0.3
       }]
     },
     options:{
-      interaction:{
-        mode:'index',
-        intersect:false
-      },
-      hover:{
-        mode:'index',
-        intersect:false
-      },
+      interaction:{mode:'index',intersect:false},
+      hover:{mode:'index',intersect:false},
       plugins:{
         legend:{labels:{color:"white"}},
-        tooltip:{
-          enabled:true,
-          mode:'index',
-          intersect:false
-        }
+        tooltip:{mode:'index',intersect:false}
       },
       scales:{
-        x:{
-          ticks:{color:"white"},
-          grid:{color:"rgba(255,255,255,0.05)"}
-        },
-        y:{
-          ticks:{color:"white"},
-          grid:{color:"rgba(255,255,255,0.05)"}
-        }
+        x:{ticks:{color:"white"}},
+        y:{ticks:{color:"white"}}
       }
     }
   });
 }
 
-var tempChart = createLine("tempChart","Temperature","#22c55e");
-var humChart = createLine("humChart","Humidity","#3b82f6");
-var airChart = createLine("airChart","Air Quality","#facc15");
+var tempChart = createChart("tempChart","Temperature","#22c55e");
+var humChart = createChart("humChart","Humidity","#3b82f6");
+var airChart = createChart("airChart","Air Quality","#facc15");
 
 // ================= REALTIME CURRENT =================
 db.ref("sensor").on("value", snap=>{
-  var d = snap.val();
+  let d = snap.val();
   if(!d) return;
 
   document.getElementById("tempValue").innerText = d.temperature+" °C";
   document.getElementById("humValue").innerText = d.humidity+" %";
   document.getElementById("airValue").innerText = d.airQuality;
-
-  tempGauge.data.datasets[0].data=[d.temperature,50-d.temperature];
-  tempGauge.update();
-
-  humGauge.data.datasets[0].data=[d.humidity,100-d.humidity];
-  humGauge.update();
-
-  airGauge.data.datasets[0].data=[d.airQuality,2000-d.airQuality];
-  airGauge.update();
 });
 
-// ================= HISTORY =================
-db.ref("sensorHistory").limitToLast(20).on("value", snap=>{
+// ================= RANGE HANDLER =================
+function setRange(range){
+  currentRange = range;
 
-  let labels=[], t=[], h=[], a=[];
+  document.querySelectorAll(".rangeButtons button")
+    .forEach(btn=>btn.classList.remove("active"));
 
-  snap.forEach(child=>{
-    let d = child.val();
-    labels.push(new Date(d.timestamp).toLocaleTimeString([],{
-      hour:'2-digit',
-      minute:'2-digit'
-    }));
-    t.push(d.temperature);
-    h.push(d.humidity);
-    a.push(d.airQuality);
+  event.target.classList.add("active");
+
+  loadHistory();
+}
+
+function loadHistory(){
+
+  db.ref("sensorHistory").once("value", snap=>{
+
+    let dataArr = [];
+
+    snap.forEach(child=>{
+      dataArr.push(child.val());
+    });
+
+    let now = Date.now();
+    let filtered = [];
+
+    if(currentRange==="1h")
+      filtered = dataArr.filter(d=> now-d.timestamp <= 3600000);
+
+    else if(currentRange==="6h")
+      filtered = dataArr.filter(d=> now-d.timestamp <= 21600000);
+
+    else if(currentRange==="1d")
+      filtered = dataArr.filter(d=> now-d.timestamp <= 86400000);
+
+    else if(currentRange==="1w"){
+      let daily={};
+      dataArr.forEach(d=>{
+        if(now-d.timestamp <= 604800000){
+          let day=new Date(d.timestamp).toDateString();
+          if(!daily[day]) daily[day]={t:0,h:0,a:0,c:0};
+          daily[day].t+=d.temperature;
+          daily[day].h+=d.humidity;
+          daily[day].a+=d.airQuality;
+          daily[day].c++;
+        }
+      });
+
+      let labels=[], t=[], h=[], a=[];
+      Object.keys(daily).slice(-7).forEach(day=>{
+        let x=daily[day];
+        labels.push(day);
+        t.push((x.t/x.c).toFixed(1));
+        h.push((x.h/x.c).toFixed(1));
+        a.push((x.a/x.c).toFixed(0));
+      });
+
+      updateCharts(labels,t,h,a);
+      return;
+    }
+
+    else{
+      updateCharts([],[],[],[]);
+      return;
+    }
+
+    let labels=[], t=[], h=[], a=[];
+    filtered.slice(-50).forEach(d=>{
+      labels.push(new Date(d.timestamp).toLocaleTimeString([],{
+        hour:'2-digit',minute:'2-digit'
+      }));
+      t.push(d.temperature);
+      h.push(d.humidity);
+      a.push(d.airQuality);
+    });
+
+    updateCharts(labels,t,h,a);
   });
+}
 
-  tempChart.data.labels = labels;
-  tempChart.data.datasets[0].data = t;
+function updateCharts(labels,t,h,a){
+  tempChart.data.labels=labels;
+  tempChart.data.datasets[0].data=t;
   tempChart.update();
 
-  humChart.data.labels = labels;
-  humChart.data.datasets[0].data = h;
+  humChart.data.labels=labels;
+  humChart.data.datasets[0].data=h;
   humChart.update();
 
-  airChart.data.labels = labels;
-  airChart.data.datasets[0].data = a;
+  airChart.data.labels=labels;
+  airChart.data.datasets[0].data=a;
   airChart.update();
-});
+}
+
+loadHistory();
 </script>
 
 </body>
