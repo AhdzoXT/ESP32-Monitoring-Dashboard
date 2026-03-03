@@ -21,13 +21,31 @@ h1{
   padding:25px;
 }
 
-.grid{
+.grid-top{
   display:grid;
   grid-template-columns: repeat(3,1fr);
   gap:25px;
-  padding:40px;
+  padding:20px 40px;
   max-width:1400px;
   margin:auto;
+}
+
+.grid-chart{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:30px;
+  padding:20px 40px 60px;
+  max-width:1400px;
+  margin:auto;
+}
+
+.chart-card{
+  padding:30px;
+}
+
+canvas{
+  width:100% !important;
+  height:400px !important;
 }
 
 @media(max-width:1100px){ .grid{grid-template-columns:repeat(2,1fr);} }
@@ -84,23 +102,39 @@ canvas{
 <button onclick="setRange('1w')">1 Week</button>
 </div>
 
-<div class="grid">
+<div class="grid-top">
 
 <div class="card">
 <h3>Temperature</h3>
 <div class="bigValue" id="tempValue">-- °C</div>
-<canvas id="tempChart"></canvas>
 </div>
 
 <div class="card">
 <h3>Humidity</h3>
 <div class="bigValue" id="humValue">-- %</div>
-<canvas id="humChart"></canvas>
 </div>
 
 <div class="card">
 <h3>Air Quality</h3>
 <div class="bigValue" id="airValue">--</div>
+</div>
+
+</div>
+
+<div class="grid-chart">
+
+<div class="card chart-card">
+<h3>Temperature</h3>
+<canvas id="tempChart"></canvas>
+</div>
+
+<div class="card chart-card">
+<h3>Humidity</h3>
+<canvas id="humChart"></canvas>
+</div>
+
+<div class="card chart-card">
+<h3>Air Quality</h3>
 <canvas id="airChart"></canvas>
 </div>
 
