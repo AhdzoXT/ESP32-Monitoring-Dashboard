@@ -32,10 +32,10 @@ h1{
 
 .grid-chart{
   display:grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2,1fr);  /* 2 chart per baris */
   gap:30px;
-  padding:20px 40px 60px;
-  max-width:1400px;
+  padding:20px;
+  max-width:1100px;   /* lebih kecil */
   margin:auto;
 }
 
@@ -45,7 +45,7 @@ h1{
 
 canvas{
   width:100% !important;
-  height:400px !important;
+  height:320px !important;
 }
 
 @media(max-width:1100px){ .grid{grid-template-columns:repeat(2,1fr);} }
