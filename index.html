@@ -268,9 +268,13 @@ function loadHistory(){
 
     let labels=[], t=[], h=[], a=[];
     filtered.slice(-50).forEach(d=>{
-      labels.push(new Date(d.timestamp).toLocaleTimeString([],{
-        hour:'2-digit',minute:'2-digit'
-      }));
+      labels.push(
+        new Date(d.timestamp).toLocaleTimeString('id-ID',{
+          hour:'2-digit',
+          minute:'2-digit',
+          hour12:false
+        })
+      );
       t.push(d.temperature);
       h.push(d.humidity);
       a.push(d.airQuality);
