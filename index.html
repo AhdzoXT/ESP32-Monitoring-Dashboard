@@ -1,305 +1,796 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>ESP32 Industrial Monitoring PRO</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Industrial Monitoring Dashboard</title>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-<style>
-body{
-  margin:0;
-  background:#0b1220;
-  color:white;
-  font-family:Segoe UI;
-}
+  <style>
+    :root {
+      --bg-primary: #0a0f1a;
+      --bg-secondary: #111827;
+      --bg-card: #1a2236;
+      --bg-card-hover: #232d45;
+      --border-color: #2d3748;
+      --text-primary: #f7fafc;
+      --text-secondary: #a0aec0;
+      --accent-green: #10b981;
+      --accent-blue: #3b82f6;
+      --accent-yellow: #f59e0b;
+      --accent-red: #ef4444;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    }
 
-h1{
-  text-align:center;
-  padding:25px;
-}
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-.grid-top{
-  display:grid;
-  grid-template-columns: repeat(3,1fr);
-  gap:25px;
-  padding:20px 40px;
-  max-width:1400px;
-  margin:auto;
-}
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
 
-.grid-chart{
-  display:grid;
-  grid-template-columns: repeat(2,1fr);  /* 2 chart per baris */
-  gap:30px;
-  padding:20px;
-  max-width:1100px;   /* lebih kecil */
-  margin:auto;
-}
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
 
-.chart-card{
-  padding:30px;
-}
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
 
-canvas{
-  width:100% !important;
-  height:320px !important;
-}
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
 
-@media(max-width:1100px){ .grid{grid-template-columns:repeat(2,1fr);} }
-@media(max-width:700px){ .grid{grid-template-columns:1fr;} }
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-green), #059669);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
 
-.card{
-  background:#111827;
-  border-radius:16px;
-  padding:25px;
-  box-shadow:0 0 30px rgba(0,0,0,0.6);
-}
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
 
-.bigValue{
-  font-size:48px;
-  text-align:center;
-  margin-bottom:10px;
-}
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--accent-green);
+    }
 
-.rangeButtons{
-  text-align:center;
-  margin-bottom:20px;
-}
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
 
-.rangeButtons button{
-  background:#1f2937;
-  color:white;
-  border:none;
-  padding:8px 15px;
-  margin:5px;
-  border-radius:8px;
-  cursor:pointer;
-}
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
 
-.rangeButtons button.active{
-  background:#22c55e;
-}
+    /* Main Container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
 
-canvas{
-  width:100% !important;
-  height:260px !important;
-}
-</style>
+    /* Time Range Selector */
+    .time-selector {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .time-btn {
+      padding: 0.625rem 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .time-btn:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      transform: translateY(-1px);
+    }
+
+    .time-btn.active {
+      background: linear-gradient(135deg, var(--accent-green), #059669);
+      border-color: var(--accent-green);
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-color), transparent);
+    }
+
+    .metric-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--accent-color);
+    }
+
+    .metric-card.temperature { --accent-color: var(--accent-green); }
+    .metric-card.humidity { --accent-color: var(--accent-blue); }
+    .metric-card.airquality { --accent-color: var(--accent-yellow); }
+
+    .metric-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .metric-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.125rem;
+    }
+
+    .metric-card.temperature .metric-icon { background: rgba(16, 185, 129, 0.15); }
+    .metric-card.humidity .metric-icon { background: rgba(59, 130, 246, 0.15); }
+    .metric-card.airquality .metric-icon { background: rgba(245, 158, 11, 0.15); }
+
+    .metric-value {
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-unit {
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .metric-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-top: 0.75rem;
+    }
+
+    .status-good {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+    }
+
+    .status-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-yellow);
+    }
+
+    .status-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--accent-red);
+    }
+
+    /* Charts Grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .chart-card:hover {
+      border-color: var(--border-color);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .chart-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .chart-badge {
+      padding: 0.375rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .badge-temp { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+    .badge-hum { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+    .badge-air { background: rgba(245, 158, 11, 0.15); color: var(--accent-yellow); }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Loading State */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--accent-green);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 0.75rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      border-top: 1px solid var(--border-color);
+      margin-top: 2rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .container {
+        padding: 1rem;
+      }
+
+      .metric-value {
+        font-size: 2.5rem;
+      }
+
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-container {
+        height: 220px;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4a5568;
+    }
+  </style>
 </head>
 
 <body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <div class="logo-icon">📡</div>
+        <h1>ESP32 Industrial Monitoring</h1>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span id="connectionStatus">Connected</span>
+      </div>
+    </div>
+  </header>
 
-<h1>ESP32 Industrial Monitoring</h1>
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Time Range Selector -->
+    <div class="time-selector">
+      <button class="time-btn active" onclick="setRange('now', this)">Real-time</button>
+      <button class="time-btn" onclick="setRange('1h', this)">1 Jam</button>
+      <button class="time-btn" onclick="setRange('6h', this)">6 Jam</button>
+      <button class="time-btn" onclick="setRange('1d', this)">1 Hari</button>
+      <button class="time-btn" onclick="setRange('1w', this)">1 Minggu</button>
+    </div>
 
-<div class="rangeButtons">
-<button onclick="setRange('now')" class="active">Now</button>
-<button onclick="setRange('1h')">1 Hour</button>
-<button onclick="setRange('6h')">6 Hour</button>
-<button onclick="setRange('1d')">1 Day</button>
-<button onclick="setRange('1w')">1 Week</button>
-</div>
+    <!-- Metrics Cards -->
+    <div class="metrics-grid">
+      <div class="metric-card temperature">
+        <div class="metric-header">
+          <div class="metric-title">
+            <div class="metric-icon">🌡️</div>
+            Temperature
+          </div>
+        </div>
+        <div class="metric-value" id="tempValue">
+          <span class="loading"><span class="spinner"></span>Loading...</span>
+        </div>
+        <span class="metric-status status-good" id="tempStatus">✓ Normal</span>
+      </div>
 
-<div class="grid-top">
+      <div class="metric-card humidity">
+        <div class="metric-header">
+          <div class="metric-title">
+            <div class="metric-icon">💧</div>
+            Humidity
+          </div>
+        </div>
+        <div class="metric-value" id="humValue">
+          <span class="loading"><span class="spinner"></span>Loading...</span>
+        </div>
+        <span class="metric-status status-good" id="humStatus">✓ Normal</span>
+      </div>
 
-<div class="card">
-<h3>Temperature</h3>
-<div class="bigValue" id="tempValue">-- °C</div>
-</div>
+      <div class="metric-card airquality">
+        <div class="metric-header">
+          <div class="metric-title">
+            <div class="metric-icon">🌬️</div>
+            Air Quality
+          </div>
+        </div>
+        <div class="metric-value" id="airValue">
+          <span class="loading"><span class="spinner"></span>Loading...</span>
+        </div>
+        <span class="metric-status status-good" id="airStatus">✓ Good</span>
+      </div>
+    </div>
 
-<div class="card">
-<h3>Humidity</h3>
-<div class="bigValue" id="humValue">-- %</div>
-</div>
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">Temperature History</h3>
+          <span class="chart-badge badge-temp">°C</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="tempChart"></canvas>
+        </div>
+      </div>
 
-<div class="card">
-<h3>Air Quality</h3>
-<div class="bigValue" id="airValue">--</div>
-</div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">Humidity History</h3>
+          <span class="chart-badge badge-hum">%</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="humChart"></canvas>
+        </div>
+      </div>
 
-</div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">Air Quality History</h3>
+          <span class="chart-badge badge-air">AQI</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="airChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
 
-<div class="grid-chart">
+  <!-- Footer -->
+  <footer class="footer">
+    <p>ESP32 Industrial Monitoring System &copy; 2024 | Real-time Data Dashboard</p>
+  </footer>
 
-<div class="card chart-card">
-<h3>Temperature</h3>
-<canvas id="tempChart"></canvas>
-</div>
+  <script>
+    // ================= FIREBASE CONFIG =================
+    const firebaseConfig = {
+      apiKey: "AIzaSyCVuJ2s68xscizT2YRvIqMaeFmAKGhXny0",
+      authDomain: "esp32-iot-monitoring-sistem.firebaseapp.com",
+      databaseURL: "https://esp32-iot-monitoring-sistem-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "esp32-iot-monitoring-sistem",
+      storageBucket: "esp32-iot-monitoring-sistem.firebasestorage.app",
+      messagingSenderId: "740171871840",
+      appId: "1:740171871840:web:1414091cd16c5bec427505"
+    };
 
-<div class="card chart-card">
-<h3>Humidity</h3>
-<canvas id="humChart"></canvas>
-</div>
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-<div class="card chart-card">
-<h3>Air Quality</h3>
-<canvas id="airChart"></canvas>
-</div>
+    let currentRange = 'now';
+    let tempChart, humChart, airChart;
 
-</div>
-
-<script>
-// ================= FIREBASE =================
-var firebaseConfig = {
-  apiKey: "AIzaSyCVuJ2s68xscizT2YRvIqMaeFmAKGhXny0",
-  authDomain: "esp32-iot-monitoring-sistem.firebaseapp.com",
-  databaseURL: "https://esp32-iot-monitoring-sistem-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "esp32-iot-monitoring-sistem",
-  storageBucket: "esp32-iot-monitoring-sistem.firebasestorage.app",
-  messagingSenderId: "740171871840",
-  appId: "1:740171871840:web:1414091cd16c5bec427505"
-
-};
-firebase.initializeApp(firebaseConfig);
-var db = firebase.database();
-
-let currentRange = "now";
-
-// ================= CHART FUNCTION =================
-function createChart(id,label,color){
-  return new Chart(document.getElementById(id),{
-    type:'line',
-    data:{
-      labels:[],
-      datasets:[{
-        label:label,
-        data:[],
-        borderColor:color,
-        backgroundColor:color+"22",
-        fill:true,
-        tension:0.3
-      }]
-    },
-    options:{
-      interaction:{mode:'index',intersect:false},
-      hover:{mode:'index',intersect:false},
-      plugins:{
-        legend:{labels:{color:"white"}},
-        tooltip:{mode:'index',intersect:false}
-      },
-      scales:{
-        x:{ticks:{color:"white"}},
-        y:{ticks:{color:"white"}}
+    // ================= CHART CONFIGURATION =================
+    const chartConfig = {
+      type: 'line',
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+            titleColor: '#f7fafc',
+            bodyColor: '#a0aec0',
+            borderColor: '#2d3748',
+            borderWidth: 1,
+            padding: 12,
+            cornerRadius: 8,
+            displayColors: false,
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: 'rgba(45, 55, 72, 0.5)',
+              drawBorder: false,
+            },
+            ticks: {
+              color: '#a0aec0',
+              font: {
+                size: 11,
+                family: 'Inter'
+              },
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 8
+            }
+          },
+          y: {
+            grid: {
+              color: 'rgba(45, 55, 72, 0.5)',
+              drawBorder: false,
+            },
+            ticks: {
+              color: '#a0aec0',
+              font: {
+                size: 11,
+                family: 'Inter'
+              }
+            }
+          }
+        },
+        elements: {
+          line: {
+            tension: 0.4,
+            borderWidth: 2
+          },
+          point: {
+            radius: 0,
+            hitRadius: 20,
+            hoverRadius: 6
+          }
+        }
       }
-    }
-  });
-}
+    };
 
-var tempChart = createChart("tempChart","Temperature","#22c55e");
-var humChart = createChart("humChart","Humidity","#3b82f6");
-var airChart = createChart("airChart","Air Quality","#facc15");
+    function createChart(canvasId, color, gradientColors) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      
+      // Create gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+      gradient.addColorStop(0, gradientColors[0]);
+      gradient.addColorStop(1, gradientColors[1]);
 
-// ================= REALTIME CURRENT =================
-db.ref("sensor").on("value", snap=>{
-  let d = snap.val();
-  if(!d) return;
-
-  document.getElementById("tempValue").innerText = d.temperature+" °C";
-  document.getElementById("humValue").innerText = d.humidity+" %";
-  document.getElementById("airValue").innerText = d.airQuality;
-});
-
-// ================= RANGE HANDLER =================
-function setRange(range){
-  currentRange = range;
-
-  document.querySelectorAll(".rangeButtons button")
-    .forEach(btn=>btn.classList.remove("active"));
-
-  event.target.classList.add("active");
-
-  loadHistory();
-}
-
-function loadHistory(){
-
-  db.ref("sensorHistory").once("value", snap=>{
-
-    let dataArr = [];
-
-    snap.forEach(child=>{
-      dataArr.push(child.val());
-    });
-
-    let now = Date.now();
-    let filtered = [];
-
-    if(currentRange==="1h")
-      filtered = dataArr.filter(d=> now-d.timestamp <= 3600000);
-
-    else if(currentRange==="6h")
-      filtered = dataArr.filter(d=> now-d.timestamp <= 21600000);
-
-    else if(currentRange==="1d")
-      filtered = dataArr.filter(d=> now-d.timestamp <= 86400000);
-
-    else if(currentRange==="1w"){
-      let daily={};
-      dataArr.forEach(d=>{
-        if(now-d.timestamp <= 604800000){
-          let day=new Date(d.timestamp).toDateString();
-          if(!daily[day]) daily[day]={t:0,h:0,a:0,c:0};
-          daily[day].t+=d.temperature;
-          daily[day].h+=d.humidity;
-          daily[day].a+=d.airQuality;
-          daily[day].c++;
+      return new Chart(ctx, {
+        ...chartConfig,
+        data: {
+          labels: [],
+          datasets: [{
+            label: canvasId.replace('Chart', '').toUpperCase(),
+            data: [],
+            borderColor: color,
+            backgroundColor: gradient,
+            fill: true,
+            pointBackgroundColor: color,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+          }]
         }
       });
-
-      let labels=[], t=[], h=[], a=[];
-      Object.keys(daily).slice(-7).forEach(day=>{
-        let x=daily[day];
-        labels.push(day);
-        t.push((x.t/x.c).toFixed(1));
-        h.push((x.h/x.c).toFixed(1));
-        a.push((x.a/x.c).toFixed(0));
-      });
-
-      updateCharts(labels,t,h,a);
-      return;
     }
 
-    else{
-      updateCharts([],[],[],[]);
-      return;
-    }
+    // Initialize charts
+    tempChart = createChart('tempChart', '#10b981', ['rgba(16, 185, 129, 0.3)', 'rgba(16, 185, 129, 0)']);
+    humChart = createChart('humChart', '#3b82f6', ['rgba(59, 130, 246, 0.3)', 'rgba(59, 130, 246, 0)']);
+    airChart = createChart('airChart', '#f59e0b', ['rgba(245, 158, 11, 0.3)', 'rgba(245, 158, 11, 0)']);
 
-    let labels=[], t=[], h=[], a=[];
-    filtered.slice(-50).forEach(d=>{
-      labels.push(
-        new Date(d.timestamp).toLocaleTimeString('id-ID',{
-          hour:'2-digit',
-          minute:'2-digit',
-          hour12:false
-        })
-      );
-      t.push(d.temperature);
-      h.push(d.humidity);
-      a.push(d.airQuality);
+    // ================= REALTIME DATA =================
+    db.ref('sensor').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      // Update values with animation
+      updateValue('tempValue', data.temperature, '°C');
+      updateValue('humValue', data.humidity, '%');
+      updateValue('airValue', data.airQuality, '');
+
+      // Update status indicators
+      updateStatus('tempStatus', data.temperature, [
+        { max: 25, status: 'good', text: '✓ Normal' },
+        { max: 35, status: 'warning', text: '⚠ Warm' },
+        { max: Infinity, status: 'danger', text: '🔥 Hot' }
+      ]);
+
+      updateStatus('humStatus', data.humidity, [
+        { max: 40, status: 'good', text: '✓ Normal' },
+        { max: 70, status: 'warning', text: '⚠ High' },
+        { max: Infinity, status: 'danger', text: '💧 Very High' }
+      ]);
+
+      updateStatus('airStatus', data.airQuality, [
+        { max: 50, status: 'good', text: '✓ Good' },
+        { max: 100, status: 'warning', text: '⚠ Moderate' },
+        { max: Infinity, status: 'danger', text: '☠ Unhealthy' }
+      ], true); // Inverse logic for AQI (lower is better)
+
+      // Update connection status
+      document.getElementById('connectionStatus').textContent = 'Connected';
+    }, (error) => {
+      document.getElementById('connectionStatus').textContent = 'Disconnected';
+      document.querySelector('.status-indicator').style.borderColor = 'var(--accent-red)';
+      document.querySelector('.status-dot').style.background = 'var(--accent-red)';
     });
 
-    updateCharts(labels,t,h,a);
-  });
-}
+    function updateValue(elementId, value, unit) {
+      const element = document.getElementById(elementId);
+      element.innerHTML = `${value}<span class="metric-unit"> ${unit}</span>`;
+      element.style.animation = 'none';
+      element.offsetHeight; // Trigger reflow
+      element.style.animation = 'pulse 0.3s ease';
+    }
 
-function updateCharts(labels,t,h,a){
-  tempChart.data.labels=labels;
-  tempChart.data.datasets[0].data=t;
-  tempChart.update();
+    function updateStatus(elementId, value, ranges, inverse = false) {
+      const element = document.getElementById(elementId);
+      let matchedRange;
 
-  humChart.data.labels=labels;
-  humChart.data.datasets[0].data=h;
-  humChart.update();
+      if (inverse) {
+        // For AQI: lower is better
+        matchedRange = ranges.find(r => value <= r.max);
+      } else {
+        matchedRange = ranges.find(r => value <= r.max);
+      }
 
-  airChart.data.labels=labels;
-  airChart.data.datasets[0].data=a;
-  airChart.update();
-}
+      element.className = `metric-status status-${matchedRange.status}`;
+      element.textContent = matchedRange.text;
+    }
 
-loadHistory();
-</script>
+    // ================= TIME RANGE HANDLER =================
+    function setRange(range, btn) {
+      currentRange = range;
 
+      // Update active button
+      document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      loadHistory();
+    }
+
+    function loadHistory() {
+      if (currentRange === 'now') {
+        clearCharts();
+        return;
+      }
+
+      db.ref('sensorHistory').once('value', (snapshot) => {
+        const dataArr = [];
+        snapshot.forEach(child => {
+          dataArr.push(child.val());
+        });
+
+        const now = Date.now();
+        let filtered = [];
+
+        switch (currentRange) {
+          case '1h':
+            filtered = dataArr.filter(d => now - d.timestamp <= 3600000);
+            break;
+          case '6h':
+            filtered = dataArr.filter(d => now - d.timestamp <= 21600000);
+            break;
+          case '1d':
+            filtered = dataArr.filter(d => now - d.timestamp <= 86400000);
+            break;
+          case '1w':
+            const daily = {};
+            dataArr.forEach(d => {
+              if (now - d.timestamp <= 604800000) {
+                const day = new Date(d.timestamp).toLocaleDateString('id-ID', { weekday: 'short' });
+                if (!daily[day]) daily[day] = { t: 0, h: 0, a: 0, c: 0 };
+                daily[day].t += d.temperature;
+                daily[day].h += d.humidity;
+                daily[day].a += d.airQuality;
+                daily[day].c++;
+              }
+            });
+
+            const labels = [], t = [], h = [], a = [];
+            Object.keys(daily).slice(-7).forEach(day => {
+              const x = daily[day];
+              labels.push(day);
+              t.push((x.t / x.c).toFixed(1));
+              h.push((x.h / x.c).toFixed(1));
+              a.push(Math.round(x.a / x.c));
+            });
+
+            updateCharts(labels, t, h, a);
+            return;
+        }
+
+        const labels = [], t = [], h = [], a = [];
+        filtered.slice(-50).forEach(d => {
+          labels.push(
+            new Date(d.timestamp).toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            })
+          );
+          t.push(d.temperature);
+          h.push(d.humidity);
+          a.push(d.airQuality);
+        });
+
+        updateCharts(labels, t, h, a);
+      });
+    }
+
+    function updateCharts(labels, temp, hum, air) {
+      tempChart.data.labels = labels;
+      tempChart.data.datasets[0].data = temp;
+      tempChart.update('none');
+
+      humChart.data.labels = labels;
+      humChart.data.datasets[0].data = hum;
+      humChart.update('none');
+
+      airChart.data.labels = labels;
+      airChart.data.datasets[0].data = air;
+      airChart.update('none');
+    }
+
+    function clearCharts() {
+      updateCharts([], [], [], []);
+    }
+
+    // Initial load
+    loadHistory();
+  </script>
 </body>
 </html>
+
