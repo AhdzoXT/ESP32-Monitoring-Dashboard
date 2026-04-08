@@ -94,30 +94,16 @@
       background-clip: text;
     }
 
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 9999px;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--accent-green);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--accent-green);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    .clock-display {
+      padding: 0.5rem 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
     }
 
     /* Main Container */
@@ -412,9 +398,8 @@
         <div class="logo-icon">📡</div>
         <h1>ESP32 Industrial Monitoring</h1>
       </div>
-      <div class="status-indicator">
-        <span class="status-dot"></span>
-        <span id="connectionStatus">Connected</span>
+      <div class="clock-display">
+        <span id="currentTime">--:--</span>
       </div>
     </div>
   </header>
@@ -528,11 +513,6 @@
 
     let currentRange = 'now';
     let tempChart, humChart, airChart;
-    
-    // Heartbeat detection for ESP32 connection
-    let lastDataTimestamp = 0;
-    const OFFLINE_TIMEOUT = 15000; // 15 seconds without data = offline
-    let heartbeatInterval;
 
     // ================= CHART CONFIGURATION =================
     const chartConfig = {
@@ -640,12 +620,6 @@
       const data = snapshot.val();
       if (!data) return;
 
-      // Update heartbeat timestamp
-      lastDataTimestamp = Date.now();
-      
-      // Mark as online
-      updateConnectionStatus(true);
-
       // Update values with animation
       updateValue('tempValue', data.temperature, '°C');
       updateValue('humValue', data.humidity, '%');
@@ -669,49 +643,19 @@
         { max: 100, status: 'warning', text: '⚠ Moderate' },
         { max: Infinity, status: 'danger', text: '☠ Unhealthy' }
       ], true); // Inverse logic for AQI (lower is better)
-    }, (error) => {
-      updateConnectionStatus(false, 'Firebase Error');
     });
 
-    // ================= HEARTBEAT CHECK =================
-    function startHeartbeatCheck() {
-      heartbeatInterval = setInterval(() => {
-        const timeSinceLastData = Date.now() - lastDataTimestamp;
-        
-        if (lastDataTimestamp === 0) {
-          // No data received yet
-          updateConnectionStatus(false, 'Waiting...');
-        } else if (timeSinceLastData > OFFLINE_TIMEOUT) {
-          // ESP32 is offline
-          updateConnectionStatus(false, 'Device Offline');
-        }
-      }, 5000); // Check every 5 seconds
+    // ================= CLOCK FUNCTION =================
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
     }
 
-    function updateConnectionStatus(isOnline, customText = null) {
-      const statusEl = document.getElementById('connectionStatus');
-      const indicatorEl = document.querySelector('.status-indicator');
-      const dotEl = document.querySelector('.status-dot');
-
-      if (isOnline) {
-        statusEl.textContent = 'Connected';
-        indicatorEl.style.background = 'rgba(16, 185, 129, 0.1)';
-        indicatorEl.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-        indicatorEl.style.color = 'var(--accent-green)';
-        dotEl.style.background = 'var(--accent-green)';
-        dotEl.style.animation = 'pulse 2s infinite';
-      } else {
-        statusEl.textContent = customText || 'Disconnected';
-        indicatorEl.style.background = 'rgba(239, 68, 68, 0.1)';
-        indicatorEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-        indicatorEl.style.color = 'var(--accent-red)';
-        dotEl.style.background = 'var(--accent-red)';
-        dotEl.style.animation = 'none';
-      }
-    }
-
-    // Start heartbeat monitoring
-    startHeartbeatCheck();
+    // Update clock immediately and every second
+    updateClock();
+    setInterval(updateClock, 1000);
 
     function updateValue(elementId, value, unit) {
       const element = document.getElementById(elementId);
