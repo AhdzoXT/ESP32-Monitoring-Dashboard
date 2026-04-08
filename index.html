@@ -528,6 +528,11 @@
 
     let currentRange = 'now';
     let tempChart, humChart, airChart;
+    
+    // Heartbeat detection for ESP32 connection
+    let lastDataTimestamp = 0;
+    const OFFLINE_TIMEOUT = 15000; // 15 seconds without data = offline
+    let heartbeatInterval;
 
     // ================= CHART CONFIGURATION =================
     const chartConfig = {
@@ -635,6 +640,12 @@
       const data = snapshot.val();
       if (!data) return;
 
+      // Update heartbeat timestamp
+      lastDataTimestamp = Date.now();
+      
+      // Mark as online
+      updateConnectionStatus(true);
+
       // Update values with animation
       updateValue('tempValue', data.temperature, '°C');
       updateValue('humValue', data.humidity, '%');
@@ -658,14 +669,49 @@
         { max: 100, status: 'warning', text: '⚠ Moderate' },
         { max: Infinity, status: 'danger', text: '☠ Unhealthy' }
       ], true); // Inverse logic for AQI (lower is better)
-
-      // Update connection status
-      document.getElementById('connectionStatus').textContent = 'Connected';
     }, (error) => {
-      document.getElementById('connectionStatus').textContent = 'Disconnected';
-      document.querySelector('.status-indicator').style.borderColor = 'var(--accent-red)';
-      document.querySelector('.status-dot').style.background = 'var(--accent-red)';
+      updateConnectionStatus(false, 'Firebase Error');
     });
+
+    // ================= HEARTBEAT CHECK =================
+    function startHeartbeatCheck() {
+      heartbeatInterval = setInterval(() => {
+        const timeSinceLastData = Date.now() - lastDataTimestamp;
+        
+        if (lastDataTimestamp === 0) {
+          // No data received yet
+          updateConnectionStatus(false, 'Waiting...');
+        } else if (timeSinceLastData > OFFLINE_TIMEOUT) {
+          // ESP32 is offline
+          updateConnectionStatus(false, 'Device Offline');
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    function updateConnectionStatus(isOnline, customText = null) {
+      const statusEl = document.getElementById('connectionStatus');
+      const indicatorEl = document.querySelector('.status-indicator');
+      const dotEl = document.querySelector('.status-dot');
+
+      if (isOnline) {
+        statusEl.textContent = 'Connected';
+        indicatorEl.style.background = 'rgba(16, 185, 129, 0.1)';
+        indicatorEl.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+        indicatorEl.style.color = 'var(--accent-green)';
+        dotEl.style.background = 'var(--accent-green)';
+        dotEl.style.animation = 'pulse 2s infinite';
+      } else {
+        statusEl.textContent = customText || 'Disconnected';
+        indicatorEl.style.background = 'rgba(239, 68, 68, 0.1)';
+        indicatorEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+        indicatorEl.style.color = 'var(--accent-red)';
+        dotEl.style.background = 'var(--accent-red)';
+        dotEl.style.animation = 'none';
+      }
+    }
+
+    // Start heartbeat monitoring
+    startHeartbeatCheck();
 
     function updateValue(elementId, value, unit) {
       const element = document.getElementById(elementId);
@@ -793,4 +839,3 @@
   </script>
 </body>
 </html>
-
