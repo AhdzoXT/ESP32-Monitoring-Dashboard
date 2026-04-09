@@ -691,6 +691,13 @@
       loadHistory();
     }
 
+    // Helper: Parse timestamp ke number (handle string dari Firebase)
+    function parseTimestamp(ts) {
+      if (typeof ts === 'string') return parseInt(ts, 10);
+      if (typeof ts === 'number') return ts;
+      return 0;
+    }
+
     function loadHistory() {
       if (currentRange === 'now') {
         clearCharts();
@@ -700,8 +707,14 @@
       db.ref('sensorHistory').once('value', (snapshot) => {
         const dataArr = [];
         snapshot.forEach(child => {
-          dataArr.push(child.val());
+          const data = child.val();
+          // Parse timestamp ke number
+          data.timestamp = parseTimestamp(data.timestamp);
+          dataArr.push(data);
         });
+
+        // Sort berdasarkan timestamp (terbaru di akhir)
+        dataArr.sort((a, b) => a.timestamp - b.timestamp);
 
         const now = Date.now();
         let filtered = [];
